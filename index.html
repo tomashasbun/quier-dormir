@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#f4f8fb" />
+  <meta name="description" content="KineMotion: análisis visual del rango de movimiento del tobillo." />
+  <title>KineMotion | Análisis de marcha</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Librerías para estimación de pose y gráfico ROM -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <a class="brand" href="#inicio" aria-label="KineMotion inicio">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 36 36" fill="none">
+            <path d="M4 20h7l4-11 6 19 4-11h7" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </span>
+        <span class="brand-copy"><strong>KineMotion</strong><small>ANÁLISIS BIOMECÁNICO</small></span>
+      </a>
+
+      <div class="topbar-right">
+        <span class="topbar-note"><span class="topbar-note-dot"></span> Plataforma de evaluación funcional</span>
+        <div class="system-status"><span class="system-status-dot"></span><span>Sistema listo</span></div>
+      </div>
+    </header>
+
+    <main id="inicio">
+      <section class="page-heading">
+        <div class="heading-copy">
+          <p class="eyebrow"><span></span> EVALUACIÓN FUNCIONAL</p>
+          <h1>Análisis de marcha</h1>
+          <p class="page-subtitle">Monitoreo cinemático de dorsiflexión y flexión plantar del tobillo.</p>
+        </div>
+        <div class="session-card">
+          <div class="session-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.2 2"/></svg>
+          </div>
+          <div><span class="session-caption">DURACIÓN DE SESIÓN</span><strong id="session-clock">00:00</strong></div>
+        </div>
+      </section>
+
+      <section class="dashboard-grid" aria-label="Panel de análisis">
+        <div class="left-column">
+          <section class="panel camera-panel" aria-labelledby="capture-title">
+            <div class="panel-heading">
+              <div class="panel-title-group">
+                <span class="panel-icon camera-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="6" width="13" height="12" rx="2.5"/><path d="m16 10 5-3v10l-5-3"/></svg>
+                </span>
+                <div>
+                  <p class="section-kicker">CAPTURA DE MOVIMIENTO</p>
+                  <h2 id="capture-title">Vista de análisis</h2>
+                </div>
+              </div>
+              <div class="source-badge" id="source-badge"><span class="source-dot"></span><span id="source-label">Sin señal</span></div>
+            </div>
+
+            <div class="camera-stage" id="camera-stage">
+              <video id="video" playsinline muted></video>
+              <canvas id="canvas" aria-label="Imagen procesada con puntos de referencia de rodilla, tobillo y pie"></canvas>
+              <div class="stage-empty" id="stage-empty">
+                <div class="empty-illustration" aria-hidden="true">
+                  <svg viewBox="0 0 64 64" fill="none">
+                    <rect x="8" y="14" width="48" height="36" rx="8" stroke="currentColor" stroke-width="1.8" />
+                    <circle cx="32" cy="32" r="10" stroke="currentColor" stroke-width="1.8" />
+                    <circle cx="32" cy="32" r="3.5" fill="currentColor" />
+                    <path d="m18 14 4-5h20l4 5" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" />
+                  </svg>
+                </div>
+                <strong>Tu evaluación comienza aquí</strong>
+                <span>Activa la webcam o selecciona un video para visualizar el movimiento y registrar el ROM.</span>
+              </div>
+              <div class="stage-overlay-top">
+                <span class="recording-label" id="recording-label"><span class="recording-dot"></span> EN ESPERA</span>
+                <span class="stage-hint"><span class="hint-icon">✦</span> Vista lateral recomendada</span>
+              </div>
+              <div class="stage-overlay-bottom">
+                <span class="tracking-status" id="tracking-status"><span class="tracking-dot"></span> Esperando sujeto</span>
+                <span class="stage-resolution" id="stage-resolution">-- × --</span>
+              </div>
+            </div>
+
+            <div class="capture-controls">
+              <button class="button button-primary" id="start-camera-btn" type="button">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="5" width="11.5" height="10" rx="2"/><path d="m14 8 3.5-2v8L14 12"/></svg>
+                Iniciar webcam
+              </button>
+              <button class="button button-secondary" id="stop-btn" type="button" disabled>
+                <svg viewBox="0 0 20 20" aria-hidden="true"><rect x="5" y="5" width="10" height="10" rx="1.5"/></svg>
+                Detener
+              </button>
+              <label class="button button-upload" for="video-upload" role="button" tabindex="0">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 13V3m0 0L6.5 6.5M10 3l3.5 3.5M4 12.5v3A1.5 1.5 0 0 0 5.5 17h9a1.5 1.5 0 0 0 1.5-1.5v-3"/></svg>
+                Cargar video
+              </label>
+              <input id="video-upload" type="file" accept="video/*" hidden />
+              <button class="button button-ghost" id="reset-btn" type="button" title="Reiniciar las métricas de esta sesión">
+                <svg viewBox="0 0 20 20" aria-hidden="true"><path d="M3.5 8A6.5 6.5 0 1 1 4 12.5M3.5 8V3.8M3.5 8h4.2"/></svg>
+                Reiniciar
+              </button>
+            </div>
+            <p class="capture-note" id="capture-note"><span class="note-bulb">i</span> Coloca la cámara a la altura del tobillo y mantén rodilla, tobillo y pie dentro del encuadre.</p>
+          </section>
+
+          <section class="panel chart-panel" aria-labelledby="rom-chart-title">
+            <div class="panel-heading chart-heading">
+              <div class="panel-title-group">
+                <span class="panel-icon chart-icon" aria-hidden="true">
+                  <svg viewBox="0 0 24 24" fill="none"><path d="M4 19V5M4 19h16"/><path d="m6.5 15 4-4 3 2 5-6" stroke-linecap="round" stroke-linejoin="round"/><path d="M15.5 7H19v3.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                <div>
+                  <p class="section-kicker">SEGUIMIENTO EN TIEMPO REAL</p>
+                  <h2 id="rom-chart-title">Rango de movimiento (ROM)</h2>
+                  <p class="panel-description">Evolución del ángulo del tobillo durante la evaluación.</p>
+                </div>
+              </div>
+              <span class="chart-unit">ÁNGULO <strong>°</strong></span>
+            </div>
+            <div class="chart-meta-row">
+              <div class="chart-legend" aria-label="Leyenda del gráfico">
+                <span><i class="legend-line legend-angle"></i> Medición</span>
+                <span><i class="legend-line legend-neutral"></i> Neutro 0°</span>
+                <span><i class="legend-line legend-limit"></i> Referencia</span>
+              </div>
+              <span class="chart-live"><i></i> EN VIVO</span>
+            </div>
+            <div class="chart-wrap">
+              <canvas id="rom-chart" aria-label="Gráfico del rango de movimiento del tobillo en grados a lo largo del tiempo"></canvas>
+              <div class="chart-empty" id="chart-empty">El gráfico comenzará a registrar datos cuando se detecte el tobillo.</div>
+            </div>
+            <div class="chart-footer">
+              <span><span class="mini-live-dot"></span> Registro continuo de ángulos</span>
+              <span id="sample-count">0 muestras</span>
+            </div>
+          </section>
+        </div>
+
+        <aside class="right-column">
+          <section class="panel live-panel" aria-labelledby="live-title">
+            <div class="panel-heading compact-heading">
+              <div>
+                <p class="section-kicker">LECTURA ACTUAL</p>
+                <h2 id="live-title">Ángulo de tobillo</h2>
+              </div>
+              <span class="live-chip" id="live-chip">INACTIVO</span>
+            </div>
+
+            <div class="angle-card" id="angle-card">
+              <div class="angle-card-top"><span class="angle-overline">MEDICIÓN INSTANTÁNEA</span><span class="angle-pulse"></span></div>
+              <div class="angle-main"><span id="angle-value">--</span><span class="angle-unit">°</span></div>
+              <div class="angle-status" id="status-text">Esperando medición</div>
+              <p id="pathology-text">Inicia la captura y coloca la pierna de perfil frente a la cámara.</p>
+              <div class="angle-scale" aria-hidden="true">
+                <span class="scale-negative">−25°</span>
+                <div class="scale-track"><span class="scale-marker" id="scale-marker"></span></div>
+                <span class="scale-positive">+20°</span>
+              </div>
+              <div class="scale-caption"><span>Flexión plantar</span><span>Dorsiflexión</span></div>
+            </div>
+
+            <div class="metrics-header"><h3>Resumen de ROM</h3><span>SESIÓN ACTUAL</span></div>
+            <div class="metrics-grid">
+              <article class="metric-tile metric-rom">
+                <div class="metric-tile-top"><span class="metric-label">ROM total</span><span class="metric-icon">↕</span></div>
+                <div class="metric-number" id="rom-value">--<small>°</small></div>
+                <div class="metric-foot">Máximo − mínimo</div>
+              </article>
+              <article class="metric-tile">
+                <div class="metric-tile-top"><span class="metric-label">Máximo</span><span class="metric-icon icon-positive">↗</span></div>
+                <div class="metric-number" id="max-value">--<small>°</small></div>
+                <div class="metric-foot">Dorsiflexión máxima</div>
+              </article>
+              <article class="metric-tile">
+                <div class="metric-tile-top"><span class="metric-label">Mínimo</span><span class="metric-icon icon-negative">↘</span></div>
+                <div class="metric-number" id="min-value">--<small>°</small></div>
+                <div class="metric-foot">Flexión plantar máxima</div>
+              </article>
+              <article class="metric-tile">
+                <div class="metric-tile-top"><span class="metric-label">Pierna analizada</span><span class="metric-icon">◎</span></div>
+                <div class="metric-number metric-number-text" id="leg-value">--</div>
+                <div class="metric-foot">Lado seleccionado</div>
+              </article>
+            </div>
+          </section>
+
+          <section class="panel settings-panel" aria-labelledby="settings-title">
+            <div class="panel-heading compact-heading">
+              <div>
+                <p class="section-kicker">PERSONALIZA LA SESIÓN</p>
+                <h2 id="settings-title">Parámetros de análisis</h2>
+              </div>
+              <span class="settings-icon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" fill="none"><path d="M12 8.5a3.5 3.5 0 1 0 0 7 3.5 3.5 0 0 0 0-7Z"/><path d="m19.4 15 .1.1a1.7 1.7 0 0 1-2.4 2.4l-.1-.1a1.7 1.7 0 0 0-2.9 1.2v.2a1.7 1.7 0 0 1-3.4 0v-.2a1.7 1.7 0 0 0-2.9-1.2l-.1.1a1.7 1.7 0 0 1-2.4-2.4l.1-.1a1.7 1.7 0 0 0-1.2-2.9H4a1.7 1.7 0 0 1 0-3.4h.2a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a1.7 1.7 0 0 1 2.4-2.4l.1.1a1.7 1.7 0 0 0 2.9-1.2V2a1.7 1.7 0 0 1 3.4 0v.2a1.7 1.7 0 0 0 2.9 1.2l.1-.1a1.7 1.7 0 0 1 2.4 2.4l-.1.1a1.7 1.7 0 0 0 1.2 2.9h.2a1.7 1.7 0 0 1 0 3.4h-.2a1.7 1.7 0 0 0-1.2 2.9Z"/></svg>
+              </span>
+            </div>
+
+            <label class="field-label" for="leg-select">Extremidad a analizar</label>
+            <div class="select-wrap">
+              <select id="leg-select" class="select-control">
+                <option value="auto">Detección automática</option>
+                <option value="left">Pierna izquierda</option>
+                <option value="right">Pierna derecha</option>
+              </select>
+              <svg viewBox="0 0 20 20" aria-hidden="true"><path d="m5 7 5 5 5-5"/></svg>
+            </div>
+
+            <div class="reference-title">Rangos de referencia configurados</div>
+            <div class="reference-list">
+              <div class="reference-row"><span class="reference-marker neutral-marker"></span><span>Posición neutra</span><strong>0°</strong></div>
+              <div class="reference-row"><span class="reference-marker dorsi-marker"></span><span>Dorsiflexión</span><strong>0° a +20°</strong></div>
+              <div class="reference-row"><span class="reference-marker plantar-marker"></span><span>Flexión plantar</span><strong>0° a −25°</strong></div>
+            </div>
+            <div class="clinical-notice"><span class="notice-icon">i</span><p>Los rangos son orientativos. La medición visual 2D no reemplaza una evaluación clínica ni constituye un diagnóstico.</p></div>
+          </section>
+        </aside>
+      </section>
+    </main>
+
+    <footer class="app-footer">
+      <span><strong>KineMotion</strong><i>•</i> Herramienta de apoyo para evaluación cinemática</span>
+      <span>Estimación angular mediante visión artificial 2D</span>
+    </footer>
+  </div>
+
+  <script type="module" src="index.js"></script>
+</body>
+</html>
